@@ -1,0 +1,54 @@
+name: init
+author: Jesús Leganés-Combarro 'piranna' (http://piranna.github.io)
+description: Initialize Github Actions workflow environment
+
+inputs:
+  NODE_AUTH_TOKEN:
+    description: Github NPM token
+  node-version:
+    description: Node.js version
+  ref:
+    description: commit-ish to checkout
+  registry-url:
+    description: NPM registry URL
+  ssh-private-key:
+    description: SSH private key
+  test-reporters:
+    description: Test reporters to install
+
+runs:
+  using: composite
+
+  steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup SSH
+        if: inputs.ssh-private-key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ inputs.ssh-private-key }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+          node-version: ${{ inputs.node-version }}
+          registry-url: ${{ inputs.registry-url }}
+
+      - name: Install dependencies
+        run: npm ci --verbose
+        env:
+          NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
+
+      - name: Install test reporters
+        if: inputs.test-reporters
+        run: npm install --no-save --verbose ${{ inputs.test-reporters }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+branding:
+  color: orange
+  icon: sunrise
