@@ -27,7 +27,7 @@ runs:
 
     - name: Setup SSH
       if: inputs.ssh-private-key
-      uses: webfactory/ssh-agent@v0.7.0
+      uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ inputs.ssh-private-key }}
 
