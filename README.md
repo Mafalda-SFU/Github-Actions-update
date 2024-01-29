@@ -9,9 +9,9 @@ and install test reporters.
 
 All inputs are optional, using their default values if not provided.
 
-- `node_auth_token`: Github authentication token for installing private npm
-  dependencies.
+- `node_auth_token`: Github authentication token for installing npm dependencies
+  from Github Packages Registry.
 - `node-version`: Node.js version to use.
 - `ref`: Git ref to checkout.
-- `ssh-private-key`: SSH private key for installing private npm dependencies.
+- `ssh-private-key`: SSH private key for installing private git dependencies.
 - `test-reporters`: Test reporters to install.
