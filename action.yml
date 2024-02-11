@@ -1,56 +1,94 @@
-name: init
+name: update
 author: Jesús Leganés-Combarro 'piranna' (http://piranna.github.io)
-description: Initialize Github Actions workflow environment
+description: Update version and dependencies
 
 inputs:
+  dependencies-update-latest:
+    description: Dependencies to update to latest version, can be a glob
+  new_version:
+    description: New version to update to
+    required: true
   node_auth_token:
     description: Github NPM token
-  node-version:
-    description: Node.js version
-  ref:
-    description: commit-ish to checkout
-  registry-url:
-    description: NPM registry URL
-  ssh-private-key:
-    description: SSH private key
-  test-reporters:
-    description: Test reporters to install
+  reference-package-name:
+    description: Reference package name to check for version update
+    required: true
+  update-script:
+    description: Script to run to update the package
+
+  # See https://github.com/actions/checkout/issues/13#issuecomment-724415212
+  user-email:
+    description: User email to use to push docs to web page git repository
+    default: 41898282+github-actions[bot]@users.noreply.github.com
+  user-name:
+    description: User name to use to push docs to web page git repository
+    default: github-actions[bot]
 
 runs:
   using: composite
 
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.ref }}
-
-    - name: Setup SSH
-      if: inputs.ssh-private-key
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ inputs.ssh-private-key }}
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        cache: 'npm'
-        node-version: ${{ inputs.node-version }}
-        registry-url: ${{ inputs.registry-url }}
-
-    - name: Install dependencies
-      run: npm ci --verbose
+    # Update source code
+    - name: Update source code
+      if: ${{ inputs.update-script != '' }}
       shell: bash
+      run: ${{ inputs.update-script }} ${{ inputs.new_version }}
+
+    # Update
+    - name: Update package version
+      shell: bash
+      run: |
+        tmpfile=$(mktemp)
+
+        cp package.json "$tmpfile" &&
+        jq \
+          --arg version "${{ inputs.new_version }}" \
+          '.version |= $version' \
+          "$tmpfile" \
+        > package.json &&
+        rm -f "$tmpfile"
+
+    - name: Update latest dependencies
+      if: ${{ inputs.dependencies-update-latest != '' }}
+      shell: bash
+      run: |
+        npx npm-check-updates \
+          --target latest \
+          --upgrade ${{ inputs.dependencies-update-latest }}
       env:
         NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
 
-    - name: Install test reporters
-      if: inputs.test-reporters
-      run: npm install --no-save --verbose ${{ inputs.test-reporters }}
+    - name: Update semver dependencies
       shell: bash
+      run: npx npm-check-updates --target semver --upgrade
       env:
         NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
+
+    - name: Install updated dependencies
+      shell: bash
+      run: npm install --verbose
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.node_auth_token }}
+
+    # Tests
+    - name: Run tests with updated dependencies
+      uses: Mafalda-SFU/Github-Actions-run-tests@v1
+
+    # Commit and push changes
+    - name: Commit and push changes
+      shell: bash
+      run: |
+        git config user.email ${{ inputs.user-email }}
+        git config user.name "${{ inputs.user-name }}"
+
+        git add .
+        git commit \
+          -m "chore(deps): update to ${{ inputs.reference-package-name }}@${{ inputs.new_version }}"
+        git tag "v${{ inputs.new_version }}"
+
+        git push
+        git push --tags
 
 branding:
   color: orange
-  icon: sunrise
+  icon: corner-right-up
