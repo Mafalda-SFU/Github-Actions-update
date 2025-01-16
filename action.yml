@@ -78,10 +78,12 @@ runs:
     - name: Commit and push changes
       shell: bash
       run: |
+        git add .
+        [ -n "$(git status -s)" ] || exit 0  # Exit if no changes to commit
+
         git config user.email ${{ inputs.user-email }}
         git config user.name "${{ inputs.user-name }}"
 
-        git add .
         git commit \
           -m "chore(deps): update to ${{ inputs.reference-package-name }}@${{ inputs.new_version }}"
         git tag "v${{ inputs.new_version }}"
